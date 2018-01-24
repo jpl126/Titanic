@@ -1,0 +1,275 @@
+import numpy as np  # linear algebra
+import pandas as pd  # data processing, CSV file I/O (e.g. pd.read_csv)
+import matplotlib.pyplot as plt
+from statistics import mean, median  # statistical tools
+
+
+def plotting(x1, y1, x2, y2, x3, y3, x4, y4):
+    width = 0.4
+    ymax = 1.1
+    print(x3)
+    print(y3)
+    print(x4)
+    print(y4)
+
+    def double_bars(ax, x, y, labels):
+
+        [xtick, legend] = labels
+        ind = np.arange(len(x)/2)
+
+        men_means = (y[0], y[2], y[4])
+        women_means = (y[1], y[3], y[5])
+        rects1 = ax.bar(ind, men_means, width, color='xkcd:dark grey')
+        rects2 = ax.bar(ind + width, women_means, width, color='xkcd:dark yellow')
+
+        ax.set_xticks(ind + width / 2)
+        ax.set_xticklabels(xtick)
+
+        ax.legend((rects1[0], rects2[0]), legend)
+
+        def autolabel(rects):
+            """
+            Attach a text label above each bar displaying its height
+            """
+            for rect in rects:
+                height = rect.get_height()
+                ax.text(rect.get_x() + rect.get_width() / 2., height + 0.01,
+                        '{0:.1f}%'.format(float(height) * 100), ha='center',
+                        va='bottom', fontweight='bold', color='red')
+
+        autolabel(rects1)
+        autolabel(rects2)
+        return ax
+
+    fig = plt.figure(figsize=(13, 8.5), dpi=75)
+    fig.suptitle('Survival chances based on gender, class and age', fontsize=14, fontweight='bold')
+    fig.subplots_adjust(left=0.07, right=0.97, top=0.90, bottom=0.10, hspace=0.28)
+
+    ax1 = plt.subplot2grid((2, 2), (0, 0))
+    ax2 = plt.subplot2grid((2, 2), (0, 1))
+    ax3 = plt.subplot2grid((2, 2), (1, 0))
+    ax4 = plt.subplot2grid((2, 2), (1, 1))
+
+    # ax1 description
+    ax1.bar(x1, y1, width * 1.25 , color='xkcd:dark grey', align='center')
+    for i in range(len(x1)):
+        ax1.text(x1[i], y1[i] + .025, '{0:.2f}%'.format(y1[i] * 100), color='red', fontweight='bold',
+                 horizontalalignment='center')
+
+    # ax2 description
+    labels_ax2 = [('1st class', '2nd class', '3rd class'), ('Female', 'Male')]
+    double_bars(ax2, x2, y2, labels_ax2)
+
+    # ax3 description
+    ax3.bar(x3, y3, width * 1.5, color='xkcd:dark grey', align='center')
+
+    for i in range(len(x3)):
+        ax3.text(x3[i], y3[i] + .025, '{0:.2f}%'.format(y3[i] * 100), color='red', fontweight='bold',
+                 horizontalalignment='center')
+
+    # ax4 description
+    ax4.bar(x4, y4, width, color='xkcd:dark grey', align='center')
+    for label in ax4.xaxis.get_ticklabels():
+        label.set_rotation(45)
+
+    # labels
+    ax1.set_xlabel('Gender', fontweight='bold')
+    ax1.set_ylabel('Survival rate', fontweight='bold')
+    ax1.set_title('Survivability by gender', fontsize=14)
+
+    ax2.set_ylabel('Survival rate', fontweight='bold')
+    ax2.set_xlabel('Class', fontweight='bold')
+    ax2.set_title('Survivability by class and gender', fontsize=14)
+
+    ax3.set_xlabel('No. of relatives', fontweight='bold')
+    ax3.set_ylabel('Survival rate', fontweight='bold')
+    ax3.set_title('Survivability by no. of relatives on board', fontsize=14)
+
+    ax4.set_xlabel('Age', fontweight='bold')
+    ax4.set_ylabel('Survival rate', fontweight='bold')
+    ax4.set_title('Survivability by age', fontsize=14)
+
+    ax1.set_ylim(ymax=ymax)
+    ax2.set_ylim(ymax=ymax)
+    ax3.set_ylim(ymax=ymax)
+    ax4.set_ylim(ymax=ymax)
+
+    plt.show()
+
+
+# loading files from csv and converting them into numpy array
+def load_csv():
+    train_data = pd.read_csv("..\\Data\\train.csv", sep=',', header=None)
+    test_data = pd.read_csv("..\\Data\\test.csv", sep=',', header=None)
+
+    # change to np.array
+    train_data = np.array(train_data)
+    test_data = np.array(test_data)
+
+    # remove firs row
+    train_data = np.delete(train_data, 0, axis=0)
+    test_data = np.delete(test_data, 0, axis=0)
+    train_data[:, 1] = train_data[:, 1].astype('float')
+    print(type(train_data[1][1]))
+    return train_data, test_data
+
+
+# changing type of features and transposing matrix
+def features_type(input_data):
+    input_data = np.transpose(input_data)
+    # 1 Survived, 2 PClass, 5 Age, 6 SibSp, 7 Parch, 9 Fare
+    features_num = [1, 2, 5, 6, 7, 9]
+    for i in features_num:
+        input_data[i] = input_data[i].astype(float)
+
+    return input_data
+
+
+# statistics of disaster - only for train data!
+def disaster_statistics(input_data):
+
+    female_class_no = [[], [], []]     # [First class, Second class, Third class]
+    t_female_class_no = [[], [], []]   # [First class, Second class, Third class] - after transposing & choosing columns
+    male_class_no = [[], [], []]       # [First class, Second class, Third class]
+    t_male_class_no = [[], [], []]     # [First class, Second class, Third class] - after transposing & choosing columns
+    relatives_no = [[], [], [], [], [], []]      # [0, 1, 2, 3, 4, 5+] - no. of relatives on board
+    t_relatives_no = [[], [], [], [], [], []]    # [0, 1, 2, 3, 4, 5+] - no. of relatives on board after transposing & ...
+    rel_survivability = []
+    age_groups = []
+    [age_groups.append([]) for _ in range(13)]   # Age groups from 0 - 5, to 60+
+    age_groups_sur = []
+    age_groups_no = []
+    male_data = []
+    female_data = []
+    input_data_wonan = []  # data without NaN age
+    input_data_wnan = []   # data with NaN age
+
+    for row in input_data:
+        if not pd.isnull(row[5]):
+            input_data_wonan.append(row)
+        else:
+            input_data_wnan.append(row)
+
+    # changing data type of specific attributes WITHOUT NaN
+    t_input_data_wonan = features_type(input_data_wonan)
+
+    # changing data type of specific attributes WITH NaN
+    t_input_data_wnan = features_type(input_data_wnan)
+
+    # Gender extraction
+
+    for row in input_data:
+        if row[4] == 'female':
+            female_data.append(row)
+        elif row[4] == 'male':
+            male_data.append(row)
+
+    female_data = np.array(female_data)
+    male_data = np.array(male_data)
+
+    t_female_data = features_type(female_data)
+    t_male_data = features_type(male_data)
+
+    # survive rate by gender
+
+    female_no = len(female_data)
+    female_survivability = mean(t_female_data[1])
+    print("debug female:" + str(female_no))
+    print(str(female_survivability))
+
+    male_no = len(male_data)
+    male_survivability = mean(t_male_data[1])
+    print("debug male:" + str(male_no))
+    print(str(male_survivability))
+
+    gender = ["Male", "Female"]
+    rate_gen = [male_survivability, female_survivability]
+
+    # survive rate by gender and class
+
+    for row in female_data:
+        pclass = int(row[2])
+        female_class_no[pclass-1].append(row)
+
+    for row in male_data:
+        pclass = int(row[2])
+        male_class_no[pclass-1].append(row)
+
+    for pclass in range(3):
+        t_female_class_no[pclass] = features_type(female_class_no[pclass])
+        t_male_class_no[pclass] = features_type(male_class_no[pclass])
+
+    female_1_survivability = mean(t_female_class_no[0][1])
+    female_2_survivability = mean(t_female_class_no[1][1])
+    female_3_survivability = mean(t_female_class_no[2][1])
+    male_1_survivability = mean(t_male_class_no[0][1])
+    male_2_survivability = mean(t_male_class_no[1][1])
+    male_3_survivability = mean(t_male_class_no[2][1])
+
+    gender_class = ['1st class \nFemale', "1st class\nMale", '2nd class\nFemale',
+                    '2nd class\nMale', '3rd class\nFemale', '3rd class\nMale']
+    rate_genclass = [female_1_survivability, male_1_survivability,
+                     female_2_survivability, male_2_survivability,
+                     female_3_survivability, male_3_survivability]
+
+    # survive rate by no. of relatives on board
+
+    for row in input_data:
+        sib_no = int(row[6]) + int(row[7])  # SibSp + Prach
+        if sib_no == 0:
+            relatives_no[0].append(row)
+        elif sib_no == 1:
+            relatives_no[1].append(row)
+        elif sib_no == 2:
+            relatives_no[2].append(row)
+        elif sib_no == 3:
+            relatives_no[3].append(row)
+        elif sib_no == 4:
+            relatives_no[4].append(row)
+        elif sib_no >= 5:
+            relatives_no[5].append(row)
+        else:
+            print('Relatives number error')
+
+    for sib_no in range(len(relatives_no)):
+        t_relatives_no[sib_no] = features_type(relatives_no[sib_no])
+        rel_survivability.append(mean(t_relatives_no[sib_no][1]))
+
+    relatives_no_label = ['0', '1', '2', '3', '4', '5+']
+
+    # survive rate by age
+
+    for row in input_data_wonan:
+        age = float(row[5])  # Age
+        for i in range(len(age_groups)):
+            if i != len(age_groups) - 1:
+                if 5 * i <= age < 5 * (i + 1):
+                    age_groups[i].append(row)
+                    break
+            elif age >= 5 * i:
+                age_groups[i].append(row)
+                break
+            else:
+                print('Age error')
+
+    for i in range(len(age_groups)):
+        sur_age_data = np.array(age_groups[i])[:, [1]]
+        age_groups_sur.append(np.mean(sur_age_data, axis=0)[0])
+
+    targets4chart = age_groups_sur
+    labels4chart = ['{} - {}'.format(i *5, (i + 1) * 5) for i in range(len(age_groups_sur)-1)]
+    labels4chart.append('{}+'.format((len(age_groups_sur)-1) * 5))
+
+    plotting(gender, rate_gen, gender_class, rate_genclass, relatives_no_label,
+             rel_survivability, labels4chart, targets4chart)
+
+
+
+
+
+
+
+# main function
+
+train_data, test_data = load_csv()
+disaster_statistics(train_data)
