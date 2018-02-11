@@ -15,7 +15,7 @@ def load_csv():
 
 
 # statistics of disaster - only for train data!
-def disaster_statistics(input_data):
+def disaster_statistics(input_data, title="Initial diagonstics"):
     # input pandas Data Frame format['Survived', 'Class', 'Sex', 'Age', 'SibSp', 'Parch', 'Fare']
 
     # Plotting statistics
@@ -53,7 +53,7 @@ def disaster_statistics(input_data):
             return ax
 
         fig = plt.figure(figsize=(13, 8.5), dpi=75)
-        fig.suptitle('Survival chances based on gender, class and age', fontsize=14, fontweight='bold')
+        fig.suptitle('Survival chances based on gender, class and age\n' + title, fontsize=14, fontweight='bold')
         fig.subplots_adjust(left=0.07, right=0.97, top=0.90, bottom=0.10, hspace=0.28)
 
         ax1 = plt.subplot2grid((2, 2), (0, 0))
@@ -106,7 +106,7 @@ def disaster_statistics(input_data):
         ax3.set_ylim(ymax=ymax)
         ax4.set_ylim(ymax=ymax)
 
-        plt.show()
+        plt.show(block=False)
 
     # Survivability by gender | x = [female, male]
     female = input_data[(input_data['Sex'] == 'female')]
@@ -163,33 +163,46 @@ def disaster_statistics(input_data):
 
 
 # initial preparing data for ML - normalizing and changing features to numbers
-def initial_preparation(in_data, learning=True):
+def initial_preparation(in_data, learning=True, age=True):
+    input_data = in_data.copy(deep=True)
+    scaling_val = [max(input_data['Fare']), max(input_data['SibSp']), max(input_data['Parch']), max(input_data['Age'])]
     # Changing Sex into number and normalizing data
-    in_data['Sex'] = np.where(in_data['Sex'] == 'female', 1, 0)  # Female == 1, Male == 0
-    in_data['Fare'] = in_data['Fare'] / in_data['Fare'].mean()
-    in_data['SibSp'] = in_data['SibSp'] / max(in_data['SibSp'])
-    in_data['Parch'] = in_data['Parch'] / max(in_data['Parch'])
+    input_data['Sex'] = np.where(input_data['Sex'] == 'female', 1, 0)  # Female == 1, Male == 0
+    input_data['Fare'] = input_data['Fare'] / scaling_val[0]
+    input_data['SibSp'] = input_data['SibSp'] / scaling_val[1]
+    input_data['Parch'] = input_data['Parch'] / scaling_val[2]
+    if age:
+        input_data['Age'] = input_data['Age'] / scaling_val[3]
     if learning:
         # randomizing rows
-        in_data = in_data.sample(frac=1).reset_index(drop=True)
-
+        input_data = input_data.sample(frac=1).reset_index(drop=True)
         # EDITING!!!! SWITCHING BELOW CODE TO OTHER FUNCTION
-
         # y = in_data['Survived']
         # X = in_data.drop(['Survived', 'Age'], axis=1)
         # return in_data
-    return in_data
+
+    return input_data, scaling_val
+
+
+def reverse_preparation(in_data, scaling_val, age=True):
+    input_data = in_data.copy(deep=True)
+    # Changing Sex into strings and undoing normalizing data
+    input_data['Sex'] = np.where(input_data['Sex'] == 1, 'female', 'male')  # Female == 1, Male == 0
+    input_data['Fare'] = input_data['Fare'] * scaling_val[0]
+    input_data['SibSp'] = input_data['SibSp'] * scaling_val[1]
+    input_data['Parch'] = input_data['Parch'] * scaling_val[2]
+    if age:
+        input_data['Age'] = input_data['Age'] * scaling_val[3]
+    return input_data
 
 
 # splitting data into test set and cv_train set (1:4)
 # after that creating 4 independent cv_test sets( cv 1:3 train)
 def set_splitting(test_data):
-
     examples_no = test_data.shape[0]
     training_cv_no = int(examples_no * 0.8)
     test_no = examples_no - training_cv_no
-
-    train_cv_nosort= np.array(test_data)[0:training_cv_no]
+    train_cv_nosort = np.array(test_data)[0:training_cv_no]
     test = np.array(test_data)[training_cv_no:]
     train_cv_sort = []
 
@@ -204,24 +217,9 @@ def set_splitting(test_data):
     return train_cv_sort, test
 
 
-# SVM learning
-def svm_linear_learning(learning_data):
-    cv_perform_array = []
-    cv_accuracy_array = []
-    train_perform_array = []
-    train_accuracy_array = []
-
-    def validation_check(input_set):
-        pass
-
-    # creating different size of sets to check high bias or high variance
-    train_max_ind = learning_data[0][0].shape[0]
-    sample_no = list(range(20, train_max_ind, int((train_max_ind-10)/10)))
-    if sample_no[-1] != train_max_ind:
-        sample_no.append(train_max_ind)
-
-    for j in sample_no:
-        # print("Sample no. = ", j)
+# SVM linear learning
+def svm_linear_learning(learning_data, plot_arg=True):
+    def validation_check_svm_linear(example_no=10**20, c_param=1.0):
         cv_perform = 0
         cv_accuracy = 0
         train_perform = 0
@@ -229,7 +227,7 @@ def svm_linear_learning(learning_data):
 
         for i in range(4):
             train = learning_data[i][0]
-            train = train[0:j, :]
+            train = train[0:example_no, :]
 
             cv = learning_data[i][1]
             train_no = train.shape[0]
@@ -239,7 +237,7 @@ def svm_linear_learning(learning_data):
             X_cv = cv[:, 1:]
             y_cv = cv[:, 0]
 
-            clf = svm.SVC()
+            clf = svm.SVC(C=c_param)
             clf.fit(X, y)
 
             # Training error
@@ -249,7 +247,6 @@ def svm_linear_learning(learning_data):
             accuracy = 1. - np.mean(np.fabs(err))
             err = err.dot(err)/train_no
             # print('Error = ', err)
-
 
             # Cross Validation error
             h_cv = clf.predict(X_cv)
@@ -264,41 +261,167 @@ def svm_linear_learning(learning_data):
             train_perform = train_perform + err
             train_accuracy = train_accuracy + accuracy
 
-        cv_perform_array.append(cv_perform/4)
-        cv_accuracy_array.append(cv_accuracy/4)
-        train_perform_array.append(train_perform/4)
-        train_accuracy_array.append(train_accuracy/4)
+        return cv_perform/4, cv_accuracy/4, train_perform/4, train_accuracy/4
 
-        # print("CV perform = ", cv_perform/4)
-        # print("CV accuracy = ", cv_accuracy/4)
-        # print("Training perform = ", train_perform/4)
-        # print("Training accuracy = ", train_accuracy/4)
+    def plotting_preparation():
+        def plotting(x_arg, y_arg, labels):
+            fig = plt.figure(figsize=(13, 8.5), dpi=75)
+            fig.suptitle('SVM Linear Model Evaluation', fontsize=14, fontweight='bold')
+            fig.subplots_adjust(left=0.07, right=0.97, top=0.90, bottom=0.10, hspace=0.28)
 
-    plt.plot(sample_no, cv_perform_array, 'r--', label="CV Performance")
-    plt.plot(sample_no, cv_accuracy_array, 'r', label="CV Accuracy")
-    plt.plot(sample_no, train_perform_array, 'g--', label="Train Performance")
-    plt.plot(sample_no, train_accuracy_array, 'g', label="Train Accuracy")
-    plt.title("Error curve")
-    plt.xlabel("# examples")
-    plt.ylabel("Accuracy/Error")
-    plt.legend()
-    plt.show()
+            ax1 = plt.subplot2grid((2, 2), (0, 0))
+            ax2 = plt.subplot2grid((2, 2), (0, 1))
+            ax3 = plt.subplot2grid((2, 2), (1, 0))
+            ax4 = plt.subplot2grid((2, 2), (1, 1))
+            ax = [ax1, ax2, ax3, ax4]
 
-    # Searching for optimal C in range(0.01;3000)
-    c = [0.01 * 10.0 ** float(x) for x in range(0, 6)] + [0.03 * 10.0 ** float(x) for x in range(0, 6)]
-    c = sorted(c)
+            for i in range(2):
+                ax[i].plot(x_arg[i], y_arg[i][0], color='xkcd:dark grey', label=labels[i][0])
+                ax[i].plot(x_arg[i], y_arg[i][1], color='xkcd:dark yellow', label=labels[i][1])
+                ax[i].set_title(labels[i][2], fontsize=14)
+                ax[i].set_xlabel(labels[i][3], fontweight='bold')
+                ax[i].set_ylabel(labels[i][4], fontweight='bold')
+                ax[i].legend()
 
-    for c_val in c:
-        pass
+            for i in range(2, 4):
+                ax[i].semilogx(x_arg[i], y_arg[i][0], color='xkcd:dark grey', label=labels[i][0])
+                ax[i].semilogx(x_arg[i], y_arg[i][1], color='xkcd:dark yellow', label=labels[i][1])
+                ax[i].set_title(labels[i][2], fontsize=14)
+                ax[i].set_xlabel(labels[i][3], fontweight='bold')
+                ax[i].set_ylabel(labels[i][4], fontweight='bold')
+                ax[i].legend()
+
+            plt.show(block=False)
+
+        # Plotting preparation
+        x_arg = list()
+        y_arg = list()
+        labels = list()
+        # First plot
+        x_arg.append(m)
+        y_arg.append([m_cv_perform_array, m_train_perform_array])
+        labels.append(["CV Performance", "Train Performance", "Error curve", "Number of examples", "Error"])
+        # Second plot
+        x_arg.append(m)
+        y_arg.append([m_cv_accuracy_array, m_train_accuracy_array])
+        labels.append(["CV Accuracy", "Train Accuracy", "Accuracy curve", "Number of examples", "Accuracy"])
+        # Third plot
+        x_arg.append(c)
+        y_arg.append([c_cv_perform_array, c_train_perform_array])
+        labels.append(["CV Performance", "Train Performance", "C Error", "C param curve", "Error"])
+        # Forth plot
+        x_arg.append(c)
+        y_arg.append([c_cv_accuracy_array, c_train_accuracy_array])
+        labels.append(["CV Accuracy", "Train Accuracy", "C Accuracy", "C param curve", "Accuracy"])
+
+        plotting(x_arg, y_arg, labels)
+
+    def c_validation():
+        cv_perform_array = []
+        cv_accuracy_array = []
+        train_perform_array = []
+        train_accuracy_array = []
+        max_cv_acc = 0
+
+        # Searching for optimal C in range(0.05; 26214.4)
+        c = [0.05 * 2 ** float(x) for x in range(0, 20)]
+
+        for c_val in c:
+            cv_perform, cv_accuracy, train_perform, train_accuracy = validation_check_svm_linear(c_param=c_val)
+            cv_perform_array.append(cv_perform)
+            cv_accuracy_array.append(cv_accuracy)
+            train_perform_array.append(train_perform)
+            train_accuracy_array.append(train_accuracy)
+            if max_cv_acc < cv_accuracy:
+                max_cv_acc = cv_accuracy
+                c_best = c_val
+        validation_data = [cv_perform_array, cv_accuracy_array, train_perform_array, train_accuracy_array, c]
+        return validation_data, c_best
+
+    def m_validation(c_par=1):
+        # creating different size of sets to check high bias or high variance
+        train_max_ind = learning_data[0][0].shape[0]
+        sample_no = list(range(20, train_max_ind, int((train_max_ind - 10) / 10)))
+        if sample_no[-1] != train_max_ind:
+            sample_no.append(train_max_ind)
+
+        cv_perform_array = []
+        cv_accuracy_array = []
+        train_perform_array = []
+        train_accuracy_array = []
+
+        for j in sample_no:
+            cv_perform, cv_accuracy, train_perform, train_accuracy = validation_check_svm_linear(example_no=j,
+                                                                                                 c_param=c_par)
+            cv_perform_array.append(cv_perform)
+            cv_accuracy_array.append(cv_accuracy)
+            train_perform_array.append(train_perform)
+            train_accuracy_array.append(train_accuracy)
+        validation_data = [cv_perform_array, cv_accuracy_array, train_perform_array, train_accuracy_array, sample_no]
+        return validation_data
+
+    c_data, c_best = c_validation()
+    m_data = m_validation(c_best)
+
+    print('Best C parameter for SVM linear is {0:.2f}'.format(c_best))
+
+    if plot_arg:
+        [m_cv_perform_array, m_cv_accuracy_array, m_train_perform_array, m_train_accuracy_array, m] = m_data
+        [c_cv_perform_array, c_cv_accuracy_array, c_train_perform_array, c_train_accuracy_array, c] = c_data
+
+        plotting_preparation()
+
+    clf = svm.SVC(C=c_best)
+    train = np.concatenate((learning_data[0][0], learning_data[0][1]))
+    X = train[:, 1:]
+    y = train[:, 0]
+    clf.fit(X, y)
+    return clf
+
+
+def prediction_all_stat(whole_learning_set, model_no_nan, model_no_age, title):
+    wls = whole_learning_set.copy(deep=True)
+    wls_no_nan = wls.dropna()
+    wls_no_age = wls[(wls['Age'].isnull())]
+
+    input_model_data_no_nan = wls_no_nan.drop(['Survived'], axis=1).reset_index(drop=True)
+    input_model_data_no_age = wls_no_age.drop(['Age', 'Survived'], axis=1).reset_index(drop=True)
+
+    svm_lin_prediction_no_nan = model_no_nan.predict(input_model_data_no_nan)
+    input_model_data_no_nan['Survived'] = pd.DataFrame(svm_lin_prediction_no_nan)
+
+    svm_lin_prediction_no_age = model_no_age.predict(input_model_data_no_age)
+    input_model_data_no_age['Survived'] = pd.DataFrame(svm_lin_prediction_no_age)
+
+    df_no_nan = reverse_preparation(input_model_data_no_nan, scal_var)
+    df_no_age = reverse_preparation(input_model_data_no_age, scal_var, age=False)
+
+    df_whole = df_no_nan.append(df_no_age)
+    disaster_statistics(df_whole, title)
+
+
 
 
 
 # main function
 train_data, test_data = load_csv()
 
-# disaster_statistics(train_data)
-train_data = initial_preparation(train_data)
+disaster_statistics(train_data)
+train_data, scal_var = initial_preparation(train_data)
 
-train_data.dropna(inplace=True)
-train_cv, test = set_splitting(train_data)
-svm_linear_learning(train_cv)
+train_data_no_nan = train_data.dropna()
+train_data_no_age = train_data[(train_data['Age'].isnull())].drop(['Age'], axis=1).copy(deep=True)
+
+train_cv, test = set_splitting(train_data_no_nan)
+svm_lin_model_no_nan = svm_linear_learning(train_cv, plot_arg=False)
+
+train_cv, test = set_splitting(train_data_no_age)
+svm_lin_model_no_age = svm_linear_learning(train_cv, plot_arg=False)
+
+prediction_all_stat(train_data, svm_lin_model_no_nan, svm_lin_model_no_age, 'SVM linear statistics')
+
+
+
+
+
+
