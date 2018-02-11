@@ -1,96 +1,7 @@
 import numpy as np  # linear algebra
 import pandas as pd  # data processing, CSV file I/O (e.g. pd.read_csv)
 import matplotlib.pyplot as plt
-
-
-def plotting(x1, y1, x2, y2, x3, y3, x4, y4):
-    width = 0.4
-    ymax = 1.1
-
-    def double_bars(ax, y, labels):
-
-        [xtick, legend] = labels
-        ind = np.arange(len(y)/2)
-
-        men_means = (y[0], y[2], y[4])
-        women_means = (y[1], y[3], y[5])
-        rects1 = ax.bar(ind, men_means, width, color='xkcd:dark grey')
-        rects2 = ax.bar(ind + width, women_means, width, color='xkcd:dark yellow')
-
-        ax.set_xticks(ind + width / 2)
-        ax.set_xticklabels(xtick)
-
-        ax.legend((rects1[0], rects2[0]), legend)
-
-        def autolabel(rects):
-            """
-            Attach a text label above each bar displaying its height
-            """
-            for rect in rects:
-                height = rect.get_height()
-                ax.text(rect.get_x() + rect.get_width() / 2., height + 0.01,
-                        '{0:.1f}%'.format(float(height) * 100), ha='center',
-                        va='bottom', fontweight='bold', color='red')
-
-        autolabel(rects1)
-        autolabel(rects2)
-        return ax
-
-    fig = plt.figure(figsize=(13, 8.5), dpi=75)
-    fig.suptitle('Survival chances based on gender, class and age', fontsize=14, fontweight='bold')
-    fig.subplots_adjust(left=0.07, right=0.97, top=0.90, bottom=0.10, hspace=0.28)
-
-    ax1 = plt.subplot2grid((2, 2), (0, 0))
-    ax2 = plt.subplot2grid((2, 2), (0, 1))
-    ax3 = plt.subplot2grid((2, 2), (1, 0))
-    ax4 = plt.subplot2grid((2, 2), (1, 1))
-
-    # ax1 description
-    ax1.bar(x1, y1, width * 1.25 , color='xkcd:dark grey', align='center')
-    for i in range(len(x1)):
-        ax1.text(x1[i], y1[i] + .025, '{0:.2f}%'.format(y1[i] * 100), color='red', fontweight='bold',
-                 horizontalalignment='center')
-
-    # ax2 description
-    labels_ax2 = [('1st class', '2nd class', '3rd class'), ('Female', 'Male')]
-    double_bars(ax2, y2, labels_ax2)
-
-    # ax3 description
-    ax3.bar(x3, y3, width * 1.5, color='xkcd:dark grey', align='center')
-
-    for i in range(len(x3)):
-        ax3.text(x3[i], y3[i] + .025, '{0:.2f}%'.format(y3[i] * 100), color='red', fontweight='bold',
-                 horizontalalignment='center')
-
-    # ax4 description
-    barlist = ax4.bar(x4, y4, width, color='xkcd:dark grey', align='center')
-    barlist[-1].set_color('xkcd:dark yellow')
-    for label in ax4.xaxis.get_ticklabels():
-        label.set_rotation(45)
-
-    # labels
-    ax1.set_xlabel('Gender', fontweight='bold')
-    ax1.set_ylabel('Survival rate', fontweight='bold')
-    ax1.set_title('Survivability by gender', fontsize=14)
-
-    ax2.set_ylabel('Survival rate', fontweight='bold')
-    ax2.set_xlabel('Class', fontweight='bold')
-    ax2.set_title('Survivability by class and gender', fontsize=14)
-
-    ax3.set_xlabel('No. of relatives', fontweight='bold')
-    ax3.set_ylabel('Survival rate', fontweight='bold')
-    ax3.set_title('Survivability by no. of relatives on board', fontsize=14)
-
-    ax4.set_xlabel('Age', fontweight='bold')
-    ax4.set_ylabel('Survival rate', fontweight='bold')
-    ax4.set_title('Survivability by age', fontsize=14)
-
-    ax1.set_ylim(ymax=ymax)
-    ax2.set_ylim(ymax=ymax)
-    ax3.set_ylim(ymax=ymax)
-    ax4.set_ylim(ymax=ymax)
-
-    plt.show()
+from sklearn import svm
 
 
 # loading files from csv and converting them into numpy array
@@ -106,6 +17,96 @@ def load_csv():
 # statistics of disaster - only for train data!
 def disaster_statistics(input_data):
     # input pandas Data Frame format['Survived', 'Class', 'Sex', 'Age', 'SibSp', 'Parch', 'Fare']
+
+    # Plotting statistics
+    def plotting(x1, y1, x2, y2, x3, y3, x4, y4):
+        width = 0.4
+        ymax = 1.1
+
+        def double_bars(ax, y, labels):
+
+            [xtick, legend] = labels
+            ind = np.arange(len(y) / 2)
+
+            men_means = (y[0], y[2], y[4])
+            women_means = (y[1], y[3], y[5])
+            rects1 = ax.bar(ind, men_means, width, color='xkcd:dark grey')
+            rects2 = ax.bar(ind + width, women_means, width, color='xkcd:dark yellow')
+
+            ax.set_xticks(ind + width / 2)
+            ax.set_xticklabels(xtick)
+
+            ax.legend((rects1[0], rects2[0]), legend)
+
+            def autolabel(rects):
+                """
+                Attach a text label above each bar displaying its height
+                """
+                for rect in rects:
+                    height = rect.get_height()
+                    ax.text(rect.get_x() + rect.get_width() / 2., height + 0.01,
+                            '{0:.1f}%'.format(float(height) * 100), ha='center',
+                            va='bottom', fontweight='bold', color='red')
+
+            autolabel(rects1)
+            autolabel(rects2)
+            return ax
+
+        fig = plt.figure(figsize=(13, 8.5), dpi=75)
+        fig.suptitle('Survival chances based on gender, class and age', fontsize=14, fontweight='bold')
+        fig.subplots_adjust(left=0.07, right=0.97, top=0.90, bottom=0.10, hspace=0.28)
+
+        ax1 = plt.subplot2grid((2, 2), (0, 0))
+        ax2 = plt.subplot2grid((2, 2), (0, 1))
+        ax3 = plt.subplot2grid((2, 2), (1, 0))
+        ax4 = plt.subplot2grid((2, 2), (1, 1))
+
+        # ax1 description
+        ax1.bar(x1, y1, width * 1.25, color='xkcd:dark grey', align='center')
+        for i in range(len(x1)):
+            ax1.text(x1[i], y1[i] + .025, '{0:.2f}%'.format(y1[i] * 100), color='red', fontweight='bold',
+                     horizontalalignment='center')
+
+        # ax2 description
+        labels_ax2 = [('1st class', '2nd class', '3rd class'), ('Female', 'Male')]
+        double_bars(ax2, y2, labels_ax2)
+
+        # ax3 description
+        ax3.bar(x3, y3, width * 1.5, color='xkcd:dark grey', align='center')
+
+        for i in range(len(x3)):
+            ax3.text(x3[i], y3[i] + .025, '{0:.2f}%'.format(y3[i] * 100), color='red', fontweight='bold',
+                     horizontalalignment='center')
+
+        # ax4 description
+        barlist = ax4.bar(x4, y4, width, color='xkcd:dark grey', align='center')
+        barlist[-1].set_color('xkcd:dark yellow')
+        for label in ax4.xaxis.get_ticklabels():
+            label.set_rotation(45)
+
+        # labels
+        ax1.set_xlabel('Gender', fontweight='bold')
+        ax1.set_ylabel('Survival rate', fontweight='bold')
+        ax1.set_title('Survivability by gender', fontsize=14)
+
+        ax2.set_ylabel('Survival rate', fontweight='bold')
+        ax2.set_xlabel('Class', fontweight='bold')
+        ax2.set_title('Survivability by class and gender', fontsize=14)
+
+        ax3.set_xlabel('No. of relatives', fontweight='bold')
+        ax3.set_ylabel('Survival rate', fontweight='bold')
+        ax3.set_title('Survivability by no. of relatives on board', fontsize=14)
+
+        ax4.set_xlabel('Age', fontweight='bold')
+        ax4.set_ylabel('Survival rate', fontweight='bold')
+        ax4.set_title('Survivability by age', fontsize=14)
+
+        ax1.set_ylim(ymax=ymax)
+        ax2.set_ylim(ymax=ymax)
+        ax3.set_ylim(ymax=ymax)
+        ax4.set_ylim(ymax=ymax)
+
+        plt.show()
 
     # Survivability by gender | x = [female, male]
     female = input_data[(input_data['Sex'] == 'female')]
@@ -161,9 +162,143 @@ def disaster_statistics(input_data):
              relat_sur_x, relat_sur_y, age_sur_x, age_sur_y)
 
 
+# initial preparing data for ML - normalizing and changing features to numbers
+def initial_preparation(in_data, learning=True):
+    # Changing Sex into number and normalizing data
+    in_data['Sex'] = np.where(in_data['Sex'] == 'female', 1, 0)  # Female == 1, Male == 0
+    in_data['Fare'] = in_data['Fare'] / in_data['Fare'].mean()
+    in_data['SibSp'] = in_data['SibSp'] / max(in_data['SibSp'])
+    in_data['Parch'] = in_data['Parch'] / max(in_data['Parch'])
+    if learning:
+        # randomizing rows
+        in_data = in_data.sample(frac=1).reset_index(drop=True)
+
+        # EDITING!!!! SWITCHING BELOW CODE TO OTHER FUNCTION
+
+        # y = in_data['Survived']
+        # X = in_data.drop(['Survived', 'Age'], axis=1)
+        # return in_data
+    return in_data
+
+
+# splitting data into test set and cv_train set (1:4)
+# after that creating 4 independent cv_test sets( cv 1:3 train)
+def set_splitting(test_data):
+
+    examples_no = test_data.shape[0]
+    training_cv_no = int(examples_no * 0.8)
+    test_no = examples_no - training_cv_no
+
+    train_cv_nosort= np.array(test_data)[0:training_cv_no]
+    test = np.array(test_data)[training_cv_no:]
+    train_cv_sort = []
+
+    cv_no = int(training_cv_no * 0.25)
+    train_no = training_cv_no - cv_no
+
+    for i in range(4):
+        train = np.delete(train_cv_nosort, range(i*cv_no, (i+1)*cv_no), 0)
+        cv = train_cv_nosort[i*cv_no:(i+1)*cv_no]
+        train_cv_sort.append([train, cv])
+    # returns train_cv_sort = [[test1, cv1], ... ,[test4, cv4]] and test set
+    return train_cv_sort, test
+
+
+# SVM learning
+def svm_linear_learning(learning_data):
+    cv_perform_array = []
+    cv_accuracy_array = []
+    train_perform_array = []
+    train_accuracy_array = []
+
+    def validation_check(input_set):
+        pass
+
+    # creating different size of sets to check high bias or high variance
+    train_max_ind = learning_data[0][0].shape[0]
+    sample_no = list(range(20, train_max_ind, int((train_max_ind-10)/10)))
+    if sample_no[-1] != train_max_ind:
+        sample_no.append(train_max_ind)
+
+    for j in sample_no:
+        # print("Sample no. = ", j)
+        cv_perform = 0
+        cv_accuracy = 0
+        train_perform = 0
+        train_accuracy = 0
+
+        for i in range(4):
+            train = learning_data[i][0]
+            train = train[0:j, :]
+
+            cv = learning_data[i][1]
+            train_no = train.shape[0]
+            cv_no = cv.shape[0]
+            X = train[:, 1:]
+            y = train[:, 0]
+            X_cv = cv[:, 1:]
+            y_cv = cv[:, 0]
+
+            clf = svm.SVC()
+            clf.fit(X, y)
+
+            # Training error
+            h = clf.predict(X)
+            # err = np.multiply(np.array(h-y_cv), np.array(h-y_cv))
+            err = h - y
+            accuracy = 1. - np.mean(np.fabs(err))
+            err = err.dot(err)/train_no
+            # print('Error = ', err)
+
+
+            # Cross Validation error
+            h_cv = clf.predict(X_cv)
+            # err = np.multiply(np.array(h-y_cv), np.array(h-y_cv))
+            err_cv = h_cv - y_cv
+            accuracy_cv = 1. - np.mean(np.fabs(err_cv))
+            err_cv = err_cv.dot(err_cv)/cv_no
+            # print('Error CV = ', err_cv)
+
+            cv_perform = cv_perform + err_cv
+            cv_accuracy = cv_accuracy + accuracy_cv
+            train_perform = train_perform + err
+            train_accuracy = train_accuracy + accuracy
+
+        cv_perform_array.append(cv_perform/4)
+        cv_accuracy_array.append(cv_accuracy/4)
+        train_perform_array.append(train_perform/4)
+        train_accuracy_array.append(train_accuracy/4)
+
+        # print("CV perform = ", cv_perform/4)
+        # print("CV accuracy = ", cv_accuracy/4)
+        # print("Training perform = ", train_perform/4)
+        # print("Training accuracy = ", train_accuracy/4)
+
+    plt.plot(sample_no, cv_perform_array, 'r--', label="CV Performance")
+    plt.plot(sample_no, cv_accuracy_array, 'r', label="CV Accuracy")
+    plt.plot(sample_no, train_perform_array, 'g--', label="Train Performance")
+    plt.plot(sample_no, train_accuracy_array, 'g', label="Train Accuracy")
+    plt.title("Error curve")
+    plt.xlabel("# examples")
+    plt.ylabel("Accuracy/Error")
+    plt.legend()
+    plt.show()
+
+    # Searching for optimal C in range(0.01;3000)
+    c = [0.01 * 10.0 ** float(x) for x in range(0, 6)] + [0.03 * 10.0 ** float(x) for x in range(0, 6)]
+    c = sorted(c)
+
+    for c_val in c:
+        pass
+
 
 
 # main function
-
 train_data, test_data = load_csv()
-disaster_statistics(train_data)
+
+# disaster_statistics(train_data)
+train_data = initial_preparation(train_data)
+
+train_data.dropna(inplace=True)
+train_cv, test = set_splitting(train_data)
+svm_linear_learning(train_cv)
